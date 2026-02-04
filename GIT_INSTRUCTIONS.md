@@ -11,13 +11,17 @@
 После установки откройте терминал в папке проекта (`Ctrl+~` в VS Code) и выполните команды по очереди:
 
 ```powershell
-# 1. Инициализация
+# 1. Настройка личности (ОБЯЗАТЕЛЬНО)
+git config --global user.email "ваш-email@example.com"
+git config --global user.name "Ваше Имя"
+
+# 2. Инициализация
 git init
 
-# 2. Добавление файлов (я уже создал .gitignore)
+# 3. Добавление файлов
 git add .
 
-# 3. Создание первого коммита
+# 4. Создание первого коммита
 git commit -m "Initial commit: Project structure and basic map implementation"
 ```
 
