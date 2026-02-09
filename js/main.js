@@ -1,4 +1,20 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // Helper function to convert Excel serial date to readable date string
+    function excelDateToString(excelDate) {
+        if (!excelDate) return '';
+        // If it's already a string that looks like a date, return as-is
+        if (typeof excelDate === 'string' && excelDate.includes('.')) return excelDate;
+        // If it's a number (Excel serial date)
+        if (typeof excelDate === 'number') {
+            const date = new Date((excelDate - 25569) * 86400 * 1000);
+            const day = String(date.getDate()).padStart(2, '0');
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const year = date.getFullYear();
+            return `${day}.${month}.${year}`;
+        }
+        return String(excelDate);
+    }
+
     // 1. Initialize Map
     const map = L.map('map').setView([55.7558, 37.6173], 11);
 
@@ -71,8 +87,9 @@ document.addEventListener('DOMContentLoaded', () => {
         for (const key in markers) delete markers[key];
 
         // Clear circles
-        // We need to clear radiusGroups explicitly if we are re-rendering entirely
         Object.values(radiusGroups).forEach(group => group.clearLayers());
+
+        let count = 0;
 
         appData.features.forEach(feature => {
             const props = feature.properties;
@@ -99,14 +116,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="popup-content">
                     <h3>${props.name}</h3>
                     <p><strong>Статус:</strong> ${props.status === 'active' ? 'Активен' : 'Планируется'}</p>
-                    <p><strong>Адрес:</strong> ${props.address || '-'}</p>
-                    <hr>
+                    <p><strong>Локация:</strong> ${props.location || '-'}</p>
                     <p><strong>Менеджер:</strong> ${props.manager || '-'}</p>
-                    <p><strong>Телефон:</strong> ${props.phone || '-'}</p>
-                    <p><strong>Бюджет:</strong> ${props.budget || '-'}</p>
-                    ${props.status === 'active' ? `<p><strong>Прогресс:</strong> ${props.progress || 0}%</p>` : ''}
-                    <p><em>${props.description || ''}</em></p>
-                    <hr style="margin: 10px 0; border: 0; border-top: 1px solid #eee;">
+                    <p><strong>Генподрядчик:</strong> ${props.generalContractor || '-'}</p>
+                    <p><strong>Закупка:</strong> ${props.procurementLink ? `<a href="${props.procurementLink}" target="_blank">${props.procurementName || 'Ссылка'}</a>` : (props.procurementName || '-')}</p>
+                    <p><strong>Срок действия закупки до:</strong> ${props.procurementValidity || '-'}</p>
+                    <p><strong>Ближайшая точка снабжения:</strong> ${props.nearestSupplyPoints || '-'}</p>
+                    <p><strong>Описание:</strong> ${props.description || '-'}</p>
                     <a href="${yandexLink}" target="_blank" style="color: #e74c3c; text-decoration: none;">📍 Открыть в Яндекс.Картах</a>
                 </div>
             `;
@@ -123,12 +139,26 @@ document.addEventListener('DOMContentLoaded', () => {
             const listItem = document.createElement('div');
             listItem.className = 'object-item';
             listItem.dataset.id = props.id;
+
+            // Get initials for avatar
+            const initials = props.name ? props.name.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase() : '??';
+
             listItem.innerHTML = `
-                <h3>${props.name}</h3>
-                <span class="status ${props.status}">${props.status === 'active' ? 'Активен' : 'Планируется'}</span>
-                <p>${props.address || 'Нет адреса'}</p>
-                <p>Бюджет: ${props.budget || '-'}</p>
+                <div class="object-avatar ${props.status}">${initials}</div>
+                <div class="object-info">
+                    <div class="object-header">
+                        <span class="object-name">${props.name}</span>
+                        ${props.status === 'active' ? '<span class="verified-badge">✓</span>' : ''}
+                    </div>
+                    <div class="object-location">${props.location || 'Нет локации'}</div>
+                    <div class="object-tags">${props.generalContractor || '-'}</div>
+                </div>
+                <div class="object-meta">
+                    <span class="status-indicator ${props.status}"></span>
+                </div>
             `;
+
+            count++;
 
             listItem.addEventListener('click', () => {
                 map.flyTo(marker.getLatLng(), 15);
@@ -139,6 +169,19 @@ document.addEventListener('DOMContentLoaded', () => {
             objectListElement.appendChild(listItem);
         });
 
+        // Auto-center map on points if there are any
+        if (Object.keys(markers).length > 0) {
+            const markerLatLngs = Object.values(markers).map(m => m.getLatLng());
+            const bounds = L.latLngBounds(markerLatLngs);
+            map.fitBounds(bounds, { padding: [50, 50] });
+        }
+
+        // Update results count
+        const resultsCountEl = document.getElementById('results-count');
+        if (resultsCountEl) {
+            resultsCountEl.textContent = `${count} объектов`;
+        }
+
         redrawCircles();
     }
 
@@ -147,14 +190,11 @@ document.addEventListener('DOMContentLoaded', () => {
         selectedMarkerId = id;
 
         document.querySelectorAll('.object-item').forEach(item => {
-            // Loose comparison for IDs that might be strings
             if (item.dataset.id == id) {
-                item.style.borderColor = 'var(--accent-color)';
-                item.style.boxShadow = '0 0 5px rgba(52, 152, 219, 0.5)';
-                item.scrollIntoView({ behavior: 'smooth', block: 'center' }); // Auto scroll to item
+                item.classList.add('selected');
+                item.scrollIntoView({ behavior: 'smooth', block: 'center' });
             } else {
-                item.style.borderColor = 'var(--border-color)';
-                item.style.boxShadow = 'none';
+                item.classList.remove('selected');
             }
         });
 
@@ -166,46 +206,29 @@ document.addEventListener('DOMContentLoaded', () => {
         Object.values(radiusGroups).forEach(group => group.clearLayers());
 
         if (activeRadii.size === 0) return;
+        if (!selectedMarkerId) return;
 
-        Object.values(markers).forEach(marker => {
-            const latLng = marker.getLatLng();
-            const isSelected = (marker.options.id === selectedMarkerId);
+        const selectedMarker = markers[selectedMarkerId];
+        if (!selectedMarker) return;
 
-            activeRadii.forEach(radius => {
-                let circleOptions;
+        const latLng = selectedMarker.getLatLng();
 
-                if (isSelected) {
-                    circleOptions = {
-                        radius: radius,
-                        color: '#3498db',
-                        weight: 2,
-                        opacity: 0.8,
-                        fillColor: '#3498db',
-                        fillOpacity: 0.2,
-                        interactive: false
-                    };
-                } else {
-                    circleOptions = {
-                        radius: radius,
-                        color: '#3498db',
-                        weight: 1,
-                        opacity: 0.4,
-                        className: 'hatched-fill',
-                        fillOpacity: 0.3,
-                        interactive: false
-                    };
-                }
+        activeRadii.forEach(radius => {
+            const circleOptions = {
+                radius: radius,
+                color: '#3498db',
+                weight: 2,
+                opacity: 0.8,
+                fillColor: '#3498db',
+                fillOpacity: 0.2,
+                interactive: false
+            };
 
-                if (!radiusGroups[radius]) {
-                    radiusGroups[radius] = L.layerGroup().addTo(map);
-                }
+            if (!radiusGroups[radius]) {
+                radiusGroups[radius] = L.layerGroup().addTo(map);
+            }
 
-                const circle = L.circle(latLng, circleOptions).addTo(radiusGroups[radius]);
-
-                if (isSelected) {
-                    circle.bringToFront();
-                }
-            });
+            L.circle(latLng, circleOptions).addTo(radiusGroups[radius]);
         });
     }
 
@@ -217,7 +240,7 @@ document.addEventListener('DOMContentLoaded', () => {
         renderObjects(e.target.value);
     });
 
-    const radiusCheckboxes = document.querySelectorAll('.radius-controls input');
+    const radiusCheckboxes = document.querySelectorAll('.radius-options input');
 
     radiusCheckboxes.forEach(checkbox => {
         checkbox.addEventListener('change', (e) => {
@@ -286,11 +309,13 @@ document.addEventListener('DOMContentLoaded', () => {
                             name: row.Name || "Новый объект",
                             status: row.Status || "planned",
                             description: row.Description || "",
-                            address: row.Address || "",
+                            location: row.Location || "",
                             manager: row.Manager || "",
-                            phone: row.Phone || "",
-                            budget: row.Budget || "",
-                            progress: row.Progress || 0
+                            procurementName: row["Procurement name"] || "",
+                            procurementLink: row["Procurement link"] || "",
+                            procurementValidity: excelDateToString(row["Procurement validity period"]),
+                            generalContractor: row["General contractor"] || "",
+                            nearestSupplyPoints: row["Nearest supply points"] || ""
                         },
                         geometry: {
                             type: "Point",

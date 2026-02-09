@@ -18,53 +18,50 @@
 </head>
 
 <body>
-    <!-- SVG Pattern Definition for Hatching -->
-    <svg style="position: absolute; width: 0; height: 0; overflow: hidden;" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-            <pattern id="hatch-pattern" patternUnits="userSpaceOnUse" width="10" height="10"
-                patternTransform="rotate(45)">
-                <line x1="0" y1="0" x2="0" y2="10" stroke="#3498db" stroke-width="2" stroke-opacity="0.5" />
-            </pattern>
-        </defs>
-    </svg>
-
     <div class="app-container">
         <aside class="sidebar">
             <div class="sidebar-header">
-                <h1>Объекты</h1>
-                <div class="filters">
-                    <select id="status-filter">
-                        <option value="all">Все статусы</option>
-                        <option value="active">Активные</option>
-                        <option value="planned">Планируемые</option>
-                    </select>
-                </div>
-                <div class="radius-controls">
-                    <details open>
-                        <summary>Зоны покрытия</summary>
-                        <div class="radius-options">
-                            <label><input type="checkbox" value="5000"> 5 км</label>
-                            <label><input type="checkbox" value="10000"> 10 км</label>
-                            <label><input type="checkbox" value="15000"> 15 км</label>
-                            <label><input type="checkbox" value="20000"> 20 км</label>
-                            <label><input type="checkbox" value="50000"> 50 км</label>
-                            <label><input type="checkbox" value="100000"> 100 км</label>
-                        </div>
-                    </details>
-                </div>
-                <div class="data-controls">
-                    <h3>Управление данными</h3>
-                    <div class="data-buttons">
-                        <button id="import-btn" class="btn">📂 Импорт Excel</button>
-                        <input type="file" id="excel-input" accept=".xlsx, .xls" style="display: none;">
-                        <button id="export-btn" class="btn secondary">💾 Скачать Data.js</button>
-                        <button id="reset-btn" class="btn danger" title="Сбросить к исходным">↻</button>
+                <div class="sidebar-top">
+                    <h1 id="results-count">0 объектов</h1>
+                    <div class="filter-controls">
+                        <select id="status-filter" class="filter-btn">
+                            <option value="all">Все статусы</option>
+                            <option value="active">Активные</option>
+                            <option value="planned">Планируемые</option>
+                        </select>
                     </div>
-                    <div id="import-status" style="font-size: 0.8rem; margin-top: 5px; color: #666;"></div>
                 </div>
+
+                <details class="collapsible-section">
+                    <summary>Зоны покрытия</summary>
+                    <div class="radius-options">
+                        <label><input type="checkbox" value="5000"> 5 км</label>
+                        <label><input type="checkbox" value="10000"> 10 км</label>
+                        <label><input type="checkbox" value="15000"> 15 км</label>
+                        <label><input type="checkbox" value="20000"> 20 км</label>
+                        <label><input type="checkbox" value="50000"> 50 км</label>
+                        <label><input type="checkbox" value="100000"> 100 км</label>
+                    </div>
+                </details>
+
+                <details class="collapsible-section">
+                    <summary>Управление данными</summary>
+                    <div class="data-buttons">
+                        <button id="import-btn" class="btn primary">📂 Импорт</button>
+                        <input type="file" id="excel-input" accept=".xlsx, .xls" style="display: none;">
+                        <button id="export-btn" class="btn">💾 Экспорт</button>
+                        <button id="reset-btn" class="btn danger" title="Сбросить данные">↻</button>
+                    </div>
+                    <div id="import-status" style="font-size: 0.75rem; margin-top: 8px; color: #718096;"></div>
+                </details>
             </div>
+
             <div id="object-list" class="object-list">
                 <!-- Objects will be populated here by JS -->
+            </div>
+
+            <div class="sidebar-footer">
+                <span>© 2026 Карта объектов</span>
             </div>
         </aside>
 
