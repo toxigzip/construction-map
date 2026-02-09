@@ -23,25 +23,22 @@ document.addEventListener('DOMContentLoaded', () => {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     }).addTo(map);
 
-    // 3. Define Icons
-    const icons = {
-        active: new L.Icon({
-            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
-            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-            iconSize: [25, 41],
-            iconAnchor: [12, 41],
-            popupAnchor: [1, -34],
-            shadowSize: [41, 41]
-        }),
-        planned: new L.Icon({
-            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-gold.png',
-            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-            iconSize: [25, 41],
-            iconAnchor: [12, 41],
-            popupAnchor: [1, -34],
-            shadowSize: [41, 41]
-        })
-    };
+    // 3. Create custom label marker
+    function createLabelMarker(name, status) {
+        const shortName = name.length > 20 ? name.substring(0, 18) + '...' : name;
+        const bgColor = status === 'active' ? '#1a2e1a' : '#6b7280';
+
+        return L.divIcon({
+            className: 'custom-label-marker',
+            html: `<div class="marker-label" style="background-color: ${bgColor};">
+                <span class="marker-name">${shortName}</span>
+                <span class="marker-icon">🏗️</span>
+            </div>`,
+            iconSize: [0, 0],
+            iconAnchor: [0, 15],
+            popupAnchor: [0, -15]
+        });
+    }
 
     // Store markers to access them later
     const markers = {};
@@ -103,9 +100,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            // Create Marker
+            // Create Marker with custom label
             const marker = L.marker([coords[0], coords[1]], {
-                icon: icons[props.status] || icons.active,
+                icon: createLabelMarker(props.name, props.status),
                 id: props.id
             });
 
@@ -140,28 +137,21 @@ document.addEventListener('DOMContentLoaded', () => {
             listItem.className = 'object-item';
             listItem.dataset.id = props.id;
 
-            // Get initials for avatar
-            const initials = props.name ? props.name.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase() : '??';
-
             listItem.innerHTML = `
-                <div class="object-avatar ${props.status}">${initials}</div>
                 <div class="object-info">
                     <div class="object-header">
                         <span class="object-name">${props.name}</span>
-                        ${props.status === 'active' ? '<span class="verified-badge">✓</span>' : ''}
+                        <span class="status-indicator ${props.status}"></span>
                     </div>
                     <div class="object-location">${props.location || 'Нет локации'}</div>
                     <div class="object-tags">${props.generalContractor || '-'}</div>
-                </div>
-                <div class="object-meta">
-                    <span class="status-indicator ${props.status}"></span>
                 </div>
             `;
 
             count++;
 
             listItem.addEventListener('click', () => {
-                map.flyTo(marker.getLatLng(), 15);
+                map.flyTo(marker.getLatLng(), 12);
                 marker.openPopup();
                 selectObject(props.id);
             });
